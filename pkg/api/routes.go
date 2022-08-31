@@ -10,7 +10,7 @@ func (s *Server) routes() {
 	needsAuthenticationGroup.Use(s.JWTAuthentication)
 
 	s.router.Get("/", handler(s.HomeHandler))
-
+	//s.router.Get("/collections", handler(s.HomeHandler))
 	s.router.Get("/products", s.GetProductsHandler)
 	needsAuthenticationGroup.Post("/products", s.AddProductHandler)
 	s.router.Get("/products/{id}", s.GetProductHandler)

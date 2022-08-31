@@ -44,8 +44,6 @@ func (s *Server) AddProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	product.CreatedBy = r.Context().Value(contextKeyUserID).(string)
-
 	err = mgm.Coll(&product).Create(&product)
 	if err != nil {
 		log.Fatalln("Error saving product to DB", err)
@@ -86,11 +84,6 @@ func (s *Server) DeleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	err := mgm.Coll(&product).FindByID(productID, &product)
 	if err != nil {
 		RespondWithMessage(w, http.StatusNotFound, "A product with this ID doesn't exist")
-		return
-	}
-
-	if product.CreatedBy != r.Context().Value(contextKeyUserID).(string) {
-		RespondWithMessage(w, http.StatusForbidden, "Only the author of the product can delete it")
 		return
 	}
 

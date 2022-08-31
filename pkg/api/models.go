@@ -27,16 +27,15 @@ type Product struct {
 	mgm.DefaultModel `bson:",inline"`
 	Title            string  `json:"title"`
 	Price            float64 `json:"price"`
-	CreatedBy        string  `json:"created_by"`
 }
 
 func (p Product) validate() error {
 	if len(p.Title) < 5 {
-		return errors.New("The title has to have at leat 5 characters")
+		return errors.New("the title has to have at leat 5 characters")
 	}
 
 	if p.Price != math.Round(p.Price*100)/100 {
-		return errors.New("The price has to many decimal places")
+		return errors.New("the price has to many decimal places")
 	}
 
 	return nil
