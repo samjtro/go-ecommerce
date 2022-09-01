@@ -8,11 +8,11 @@ type GetShoppingCartHandler struct {
 	Subtotal float64   `json:"price"`
 }
 
-func (s *Server) AddProductToShoppingCartHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) GetShoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (s *Server) GetShoppingCartHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) AddProductToShoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 

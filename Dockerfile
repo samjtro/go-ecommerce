@@ -1,25 +1,14 @@
-FROM golang as builder
+# syntax=docker/dockerfile:1
 
-LABEL maintainer "Samuel Troyer <samjtro@proton.me>"
+FROM golang:1.18-bullseye
+WORKDIR /app
 
-ENV GO111MODULE=on
+COPY go.* ./
+COPY *.go ./
 
-WORKDIR /go/src/app
-
-COPY go.mod .
-COPY go.sum .
 RUN go mod download
-
-COPY . .
-RUN CGO_ENABLED=0 go build -o app cmd/go-ecommerce-api/main.go
-
-FROM alpine
-
-RUN apk add ca-certificates
-
-COPY --from=builder /go/src/app/app /usr/local/bin/app
-COPY --from=builder /go/src/app/.env /usr/local/bin/.env
+RUN go build -o /api
 
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/local/bin/app"]
+CMD [ "/api" ]
