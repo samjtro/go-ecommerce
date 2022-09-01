@@ -18,11 +18,22 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type key int
-
 const (
 	contextKeyUserID key = iota
 )
+
+type key int
+
+// UserCredentials are used for signup and login
+type UserCredentials struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type googleUserData struct {
+	ID    string `json:"sub"`
+	Email string `json:"email"`
+}
 
 // JWTAuthentication is a middleware that checks authentication
 func (s *Server) JWTAuthentication(next http.Handler) http.Handler {
@@ -69,23 +80,29 @@ func (s *Server) JWTAuthentication(next http.Handler) http.Handler {
 	})
 }
 
-// UserCredentials are used for signup and login
-type UserCredentials struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
+func signUp(email string, password string) (user User, err error) {
+	var existingUsers []User
 
-func (u UserCredentials) validate() error {
-	emailRe := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
-	if !emailRe.MatchString(u.Email) {
-		return UserError{http.StatusBadRequest, "The email address is invalid", nil}
+	err = mgm.Coll(&User{}).SimpleFind(&existingUsers, bson.M{"email": email})
+	if err != nil {
+		return user, err
+	}
+	if len(existingUsers) != 0 {
+		return user, UserError{http.StatusForbidden, "User with this email already exists", err}
 	}
 
-	if len(u.Password) < 8 {
-		return UserError{http.StatusBadRequest, "The password has to have at least 8 characters", nil}
+	user = User{
+		Email: email,
+	}
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	user.Password = string(hashedPassword)
+
+	err = mgm.Coll(&user).Create(&user)
+	if err != nil {
+		return user, err
 	}
 
-	return nil
+	return user, nil
 }
 
 // SignUpHandler handles user sign up
@@ -113,29 +130,22 @@ func (s *Server) SignUpHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func signUp(email string, password string) (user User, err error) {
-	var existingUsers []User
-
-	err = mgm.Coll(&User{}).SimpleFind(&existingUsers, bson.M{"email": email})
+func login(email string, password string, s *Server) (user User, token string, err error) {
+	err = mgm.Coll(&user).First(bson.M{"email": email}, &user)
 	if err != nil {
-		return user, err
-	}
-	if len(existingUsers) != 0 {
-		return user, UserError{http.StatusForbidden, "User with this email already exists", err}
+		return User{}, "", UserError{http.StatusForbidden, "User doesn't exist", err}
 	}
 
-	user = User{
-		Email: email,
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
+		return User{}, "", UserError{http.StatusForbidden, "Invalid login credentials", err}
 	}
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	user.Password = string(hashedPassword)
 
-	err = mgm.Coll(&user).Create(&user)
+	token = createToken(user, s.config.secretKey)
 	if err != nil {
-		return user, err
+		return User{}, "", err
 	}
-
-	return user, nil
+	return user, token, nil
 }
 
 // LoginHandler handles user login
@@ -158,32 +168,6 @@ func (s *Server) LoginHandler(w http.ResponseWriter, r *http.Request) error {
 		"token": token,
 	})
 	return nil
-}
-
-func login(email string, password string, s *Server) (user User, token string, err error) {
-	err = mgm.Coll(&user).First(bson.M{"email": email}, &user)
-	if err != nil {
-		return User{}, "", UserError{http.StatusForbidden, "User doesn't exist", err}
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
-		return User{}, "", UserError{http.StatusForbidden, "Invalid login credentials", err}
-	}
-
-	token = createToken(user, s.config.secretKey)
-	if err != nil {
-		return User{}, "", err
-	}
-	return user, token, nil
-}
-
-func createToken(user User, secretKey []byte) string {
-	tokenClaims := &TokenClaims{UserID: user.ID.Hex()}
-	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), tokenClaims)
-	tokenString, _ := token.SignedString(secretKey)
-
-	return tokenString
 }
 
 // AuthGoogleLogin redirects user to Google login page
@@ -258,15 +242,31 @@ func (s *Server) AuthGoogleRedirect(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (u UserCredentials) validate() error {
+	emailRe := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+	if !emailRe.MatchString(u.Email) {
+		return UserError{http.StatusBadRequest, "The email address is invalid", nil}
+	}
+
+	if len(u.Password) < 8 {
+		return UserError{http.StatusBadRequest, "The password has to have at least 8 characters", nil}
+	}
+
+	return nil
+}
+
+func createToken(user User, secretKey []byte) string {
+	tokenClaims := &TokenClaims{UserID: user.ID.Hex()}
+	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), tokenClaims)
+	tokenString, _ := token.SignedString(secretKey)
+
+	return tokenString
+}
+
 func randToken() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	return base64.StdEncoding.EncodeToString(b)
-}
-
-type googleUserData struct {
-	ID    string `json:"sub"`
-	Email string `json:"email"`
 }
 
 func getUserDataFromGoogle(code string, oauth *oauth2.Config) (googleUserData, error) {

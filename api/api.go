@@ -25,10 +25,10 @@ var rnd *render.Render
 func (s *Server) Start() {
 	s.init()
 
-	log.Println("Running API on http://localhost:8080")
+	log.Println("API now listening at http://localhost:8080...")
 	err := http.ListenAndServe(":8080", s.router)
 	if err != nil {
-		log.Println("Unable to start server:", err)
+		log.Fatal("Unable to start server:", err)
 	}
 }
 

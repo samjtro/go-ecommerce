@@ -29,6 +29,12 @@ type Product struct {
 	Price            float64 `json:"price"`
 }
 
+type ShoppingCart struct {
+	mgm.DefaultModel `bson:",inline"`
+	Products         []Product `json:"products"`
+	Subtotal         float64   `json:"price"`
+}
+
 func (p Product) validate() error {
 	if len(p.Title) < 5 {
 		return errors.New("the title has to have at leat 5 characters")

@@ -1,6 +1,6 @@
 FROM golang as builder
 
-LABEL maintainer "Lucas Hild <contact@contact.de>"
+LABEL maintainer "Samuel Troyer <samjtro@proton.me>"
 
 ENV GO111MODULE=on
 

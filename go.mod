@@ -1,4 +1,4 @@
-module github.com/samjtro/go-ecommerce-api
+module github.com/samjtro/go-ecommerce
 
 go 1.19
 
