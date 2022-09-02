@@ -35,6 +35,28 @@ type ShoppingCart struct {
 	Subtotal         float64   `json:"price"`
 }
 
+func NewUser(email, password, googleUserID string) User {
+	return User{
+		Email:        email,
+		Password:     password,
+		GoogleUserID: googleUserID,
+	}
+}
+
+func NewProduct(title string, price float64) Product {
+	return Product{
+		Title: title,
+		Price: price,
+	}
+}
+
+func NewShoppingCart(products []Product, subtotal float64) ShoppingCart {
+	return ShoppingCart{
+		Products: products,
+		Subtotal: subtotal,
+	}
+}
+
 func (p Product) validate() error {
 	if len(p.Title) < 5 {
 		return errors.New("the title has to have at leat 5 characters")
